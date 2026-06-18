@@ -1,0 +1,1831 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UK Universities Academic Dashboard</title>
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- AMCharts -->
+    <script src="https://cdn.amcharts.com/lib/5/index.js"></script>
+    <script src="https://cdn.amcharts.com/lib/5/xy.js"></script>
+    <script src="https://cdn.amcharts.com/lib/5/percent.js"></script>
+    <script src="https://cdn.amcharts.com/lib/5/map.js"></script>
+    <script src="https://cdn.amcharts.com/lib/5/geodata/ukLow.js"></script>
+    <script src="https://cdn.amcharts.com/lib/5/themes/Animated.js"></script>
+
+    <style>
+        :root {
+            --primary-color: #1F3A5F;
+            --secondary-color: #4F81BD;
+            --accent-color: #F28C28;
+            --light-color: #A3C1E5;
+            --bg-color: #F5F7FA;
+            --card-bg: #FFFFFF;
+            --text-color: #2E2E2E;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border: none;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+            transition: transform 0.3s ease;
+        }
+
+            .card:hover {
+                transform: translateY(-5px);
+            }
+
+        .card-header {
+            background-color: var(--primary-color);
+            color: white;
+            border-radius: 10px 10px 0 0 !important;
+            font-weight: 600;
+        }
+
+        .kpi-card {
+            height: 100px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+        }
+
+            .kpi-card h3 {
+                font-size: 2rem;
+                font-weight: bold;
+                margin: 0;
+            }
+
+            .kpi-card h6 {
+                opacity: 0.9;
+                margin-bottom: 10px;
+            }
+
+        .chart-container {
+            width: 100%;
+            height: 400px;
+            background-color: white;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .table-container {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .filter-section {
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .custom-select {
+            width: 100%;
+            padding: 8px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+
+        .custom-range {
+            width: 100%;
+        }
+
+        .btn-primary {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+
+            .btn-primary:hover {
+                background-color: var(--secondary-color);
+                border-color: var(--secondary-color);
+            }
+
+        table {
+            font-size: 0.9rem;
+        }
+
+        th {
+            background-color: var(--primary-color);
+            color: white;
+            position: sticky;
+            top: 0;
+        }
+
+        .container-fluid {
+            padding: 20px;
+        }
+
+        h1 {
+            color: var(--primary-color);
+            font-weight: bold;
+            margin-bottom: 30px;
+        }
+
+        @media (max-width: 768px) {
+            .kpi-card h3 {
+                font-size: 1.5rem;
+            }
+
+            .chart-container {
+                height: 300px;
+            }
+        }
+
+        .loading-spinner {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Spinner -->
+    <div id="loadingSpinner" class="loading-spinner">
+        <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+
+    <div class="container-fluid">
+        <div class="row mb-4">
+            <div class="col-12">
+                <h1>📊 UK Universities Academic Dashboard</h1>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="row filter-section">
+            <div class="col-md-4">
+                <label class="form-label">Select Region:</label>
+                <select id="regionFilter" class="custom-select" multiple>
+                    <!-- Regions will be populated dynamically -->
+                </select>
+                <small class="form-text text-muted">Hold Ctrl to select multiple regions</small>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Max UG Fees (£):</label>
+                <input type="range" class="custom-range" id="feeFilter" min="0" max="50000" step="1000" value="50000">
+                <div class="d-flex justify-content-between">
+                    <span>£0</span>
+                    <span id="feeValue">£50,000</span>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">IELTS Chart:</label>
+                <button id="toggleIELTS" class="btn btn-primary w-100">
+                    Toggle View (Current: <span id="ieltsMode">Pie Chart</span>)
+                </button>
+            </div>
+        </div>
+
+        <!-- KPIs -->
+        <div class="row mb-4" id="kpis">
+            <!-- KPIs will be populated dynamically -->
+        </div>
+
+        <!-- Charts Row 1 -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        International Students & Satisfaction
+                    </div>
+                    <div class="card-body">
+                        <div id="chart1" class="chart-container"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        University Rankings Overview
+                    </div>
+                    <div class="card-body">
+                        <div id="chart2" class="chart-container"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Row 2 -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        UG vs PG Fees Comparison
+                    </div>
+                    <div class="card-body">
+                        <div id="chart3" class="chart-container"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        University Locations Map
+                    </div>
+                    <div class="card-body">
+                        <div id="mapChart" class="chart-container"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Row 3 -->
+        <div class="row mb-4">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header">
+                        IELTS Scores Distribution
+                    </div>
+                    <div class="card-body">
+                        <div id="chart6" class="chart-container"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tables -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        University Details
+                    </div>
+                    <div class="card-body table-container">
+                        <table class="table table-striped table-hover">
+                            <thead>
+                                <tr>
+                                    <th>University Name</th>
+                                    <th>UK Region</th>
+                                    <th>Rank</th>
+                                    <th>UG Fees</th>
+                                    <th>PG Fees</th>
+                                    <th>Satisfaction</th>
+                                    <th>International</th>
+                                </tr>
+                            </thead>
+                            <tbody id="table1-body">
+                                <!-- Data will be populated here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        University Statistics
+                    </div>
+                    <div class="card-body table-container">
+                        <table class="table table-striped table-hover">
+                            <thead>
+                                <tr>
+                                    <th>University Name</th>
+                                    <th>Enrollment</th>
+                                    <th>Staff</th>
+                                    <th>Living Cost</th>
+                                </tr>
+                            </thead>
+                            <tbody id="table2-body">
+                                <!-- Data will be populated here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Key Findings -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        Key Findings
+                    </div>
+                    <div class="card-body table-container">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Key Question</th>
+                                    <th>Finding</th>
+                                </tr>
+                            </thead>
+                            <tbody id="key-findings-body">
+                                <!-- Data will be populated here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- File Upload -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        Data Source
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label id="fileLabel" for="csvFile" class="form-label">Upload UK Universities CSV File:</label>
+                            <input class="form-control" type="file" id="csvFile" accept=".csv">
+                        </div>
+                        <p class="text-muted">Please upload the "uk_universities.csv" file to populate the dashboard.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Main JavaScript Code
+        am5.ready(function () {
+            let rawData = [];
+            let cleanedData = [];
+            let ieltsMode = "pie";
+            let allChartInstances = {};
+            const THEME = {
+                bg: "#F5F7FA",
+                card: "#FFFFFF",
+                primary: "#1F3A5F",
+                secondary: "#4F81BD",
+                accent: "#F28C28",
+                light: "#A3C1E5",
+                text: "#2E2E2E"
+            };
+
+            function showLoading(show) {
+                const spinner = document.getElementById('loadingSpinner');
+                spinner.style.display = show ? 'block' : 'none';
+            }
+
+            function parsePercent(v) {
+                if (v === undefined || v === null || v === "NA" || v === "" || v === "N/A" || v === "NaN") return null;
+                try {
+                    const cleaned = v.toString().replace("%", "").replace("'", "").trim();
+                    const num = parseFloat(cleaned);
+                    return isNaN(num) ? null : num;
+                } catch (e) {
+                    return null;
+                }
+            }
+
+            function toNumber(v) {
+                if (v === undefined || v === null || v === "NA" || v === "" || v === "N/A" || v === "NaN") return null;
+                try {
+                    const cleaned = v.toString().replace(/,/g, "").replace("'", "").trim();
+                    const num = parseFloat(cleaned);
+                    return isNaN(num) ? null : num;
+                } catch (e) {
+                    return null;
+                }
+            }
+
+            function extractNumber(v) {
+                if (!v || v === "NA" || v === "" || v === "N/A" || v === "NaN") return null;
+                try {
+                    let nums = v.toString().match(/\d+/g);
+                    if (!nums || nums.length === 0) return null;
+                    if (nums.length === 2) {
+                        return (parseInt(nums[0]) + parseInt(nums[1])) / 2;
+                    }
+                    return parseInt(nums[0]);
+                } catch (e) {
+                    return null;
+                }
+            }
+
+            function cleanData(data) {
+                try {
+                    console.log("Starting data cleaning...");
+                    console.log("First raw record:", data[0]);
+
+                    const cleaned = data
+                        .filter(d => {
+                            const uniName = d['University name'] || d['University_name'] || d.University_name || d.University;
+                            return uniName && uniName.trim() !== "";
+                        })
+                        .map(d => {
+                            // Create a clean object with standardized field names
+                            const cleanObj = {};
+
+                            // University information
+                            cleanObj.University_name = d['University name'] || d['University_name'] || d.University_name || d.University || '';
+                            cleanObj.Region = d.Region || d['UK Region'] || "Unknown";
+                            cleanObj.Founded_year = toNumber(d['Founded year'] || d['Founded_year'] || d.Founded_year);
+                            cleanObj.Motto = d.Motto || '';
+
+                            // Rankings and scores
+                            cleanObj.UK_rank = toNumber(d.UK_rank || d['UK_rank']);
+                            cleanObj.World_rank = toNumber(d.World_rank || d['World_rank']);
+                            cleanObj.CWUR_score = toNumber(d.CWUR_score || d['CWUR_score']);
+                            cleanObj.Minimum_IELTS_score = toNumber(d.Minimum_IELTS_score || d['Minimum_IELTS_score']);
+
+                            // Fees
+                            cleanObj.UG_Fees = toNumber(d['UG_average_fees_(in_pounds)'] || d.UG_average_fees);
+                            cleanObj.PG_Fees = toNumber(d['PG_average_fees_(in_pounds)'] || d.PG_average_fees);
+
+                            // Student statistics
+                            cleanObj.International_Students = parsePercent(d.International_students || d['International_students']);
+                            cleanObj.Student_Satisfaction = parsePercent(d.Student_satisfaction || d['Student_satisfaction']);
+                            cleanObj.Student_Enrollment = extractNumber(d.Student_enrollment || d['Student_enrollment']);
+                            cleanObj.Academic_Staff = extractNumber(d.Academic_staff || d['Academic_staff']);
+
+                            // Other information
+                            cleanObj.Control_type = d.Control_type || "Unknown";
+                            cleanObj.Academic_Calendar_Type = d.Academic_Calender || d.Academic_Calendar || "Unknown";
+                            cleanObj.Campus_Setting = d.Campus_setting || d.Campus_setting || "Unknown";
+                            cleanObj.Estimated_Living_Cost = toNumber(d['Estimated_cost_of_living_per_year_(in_pounds)'] || d.Estimated_cost_of_living);
+
+                            // Location
+                            cleanObj.Latitude = toNumber(d.Latitude);
+                            cleanObj.Longitude = toNumber(d.Longitude);
+                            cleanObj.Website = d.Website || '';
+
+                            // Normalize region names for better matching with map
+                            if (cleanObj.Region) {
+                                const regionLower = cleanObj.Region.toLowerCase();
+
+                                // Standardize common region names
+                                if (regionLower.includes("yorkshire") || regionLower.includes("humber")) {
+                                    cleanObj.Region = "Yorkshire and The Humber";
+                                } else if (regionLower.includes("east of england")) {
+                                    cleanObj.Region = "East of England";
+                                } else if (regionLower.includes("south east") && !regionLower.includes("south east of")) {
+                                    cleanObj.Region = "South East England";
+                                } else if (regionLower.includes("scotland")) {
+                                    cleanObj.Region = "Scotland";
+                                } else if (regionLower.includes("london")) {
+                                    cleanObj.Region = "London";
+                                } else if (regionLower.includes("east midlands")) {
+                                    cleanObj.Region = "East Midlands";
+                                } else if (regionLower.includes("north east")) {
+                                    cleanObj.Region = "North East England";
+                                } else if (regionLower.includes("north west")) {
+                                    cleanObj.Region = "North West England";
+                                } else if (regionLower.includes("west midlands")) {
+                                    cleanObj.Region = "West Midlands";
+                                } else if (regionLower.includes("south west")) {
+                                    cleanObj.Region = "South West England";
+                                } else if (regionLower.includes("wales")) {
+                                    cleanObj.Region = "Wales";
+                                } else if (regionLower.includes("northern ireland") || regionLower.includes("n ireland")) {
+                                    cleanObj.Region = "Northern Ireland";
+                                }
+
+                                // Clean up any remaining formatting
+                                cleanObj.Region = cleanObj.Region.trim();
+
+                                // Capitalize first letter of each word
+                                cleanObj.Region = cleanObj.Region.split(' ').map(word =>
+                                    word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+                                ).join(' ');
+
+                                // Fix specific cases
+                                if (cleanObj.Region === "Yorkshire And The Humber") {
+                                    cleanObj.Region = "Yorkshire and The Humber";
+                                } else if (cleanObj.Region === "Ue") {
+                                    cleanObj.Region = "Unknown";
+                                }
+                            }
+
+                            return cleanObj;
+                        })
+                        .filter(d => d.University_name && d.University_name.trim() !== "");
+
+                    console.log("Cleaning complete. Total records:", cleaned.length);
+                    console.log("Sample cleaned record:", cleaned[0]);
+
+                    // Log unique regions found
+                    const uniqueRegions = [...new Set(cleaned.map(d => d.Region).filter(Boolean))];
+                    console.log("Unique regions found:", uniqueRegions);
+
+                    return cleaned;
+                } catch (error) {
+                    console.error("Error in cleanData:", error);
+                    return [];
+                }
+            }
+
+            function parseCSV(csvText) {
+                try {
+                    console.log("Starting CSV parsing...");
+                    const lines = csvText.trim().split('\n');
+
+                    // Detect delimiter (comma or semicolon)
+                    const firstLine = lines[0];
+                    const commaCount = (firstLine.match(/,/g) || []).length;
+                    const semicolonCount = (firstLine.match(/;/g) || []).length;
+                    const delimiter = commaCount > semicolonCount ? ',' : ';';
+
+                    console.log("Using delimiter:", delimiter);
+
+                    const headers = lines[0].split(delimiter).map(h => h.trim().replace(/"/g, ''));
+                    console.log("Headers found:", headers);
+
+                    const data = lines.slice(1).map((line, index) => {
+                        const values = [];
+                        let current = '';
+                        let inQuotes = false;
+
+                        for (let i = 0; i < line.length; i++) {
+                            const char = line[i];
+                            if (char === '"') {
+                                inQuotes = !inQuotes;
+                            } else if (char === delimiter && !inQuotes) {
+                                values.push(current);
+                                current = '';
+                            } else {
+                                current += char;
+                            }
+                        }
+                        values.push(current);
+
+                        const obj = {};
+                        headers.forEach((header, idx) => {
+                            let value = values[idx] || "";
+                            // Remove quotes and trim
+                            value = value.replace(/^"(.*)"$/, '$1').trim();
+                            obj[header] = value;
+                        });
+
+                        return obj;
+                    });
+
+                    console.log("Parsed", data.length, "records");
+                    console.log("First parsed record:", data[0]);
+                    return data;
+                } catch (error) {
+                    console.error("Error parsing CSV:", error);
+                    alert("Error parsing CSV file. Please check the format.");
+                    return [];
+                }
+            }
+
+            function loadCSVFromFile(file) {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+
+                    reader.onload = function (e) {
+                        try {
+                            const csvText = e.target.result;
+                            console.log("CSV text sample:", csvText.substring(0, 500));
+                            const data = parseCSV(csvText);
+                            resolve(data);
+                        } catch (error) {
+                            reject(error);
+                        }
+                    };
+
+                    reader.onerror = function (e) {
+                        reject(new Error("Error reading file"));
+                    };
+
+                    reader.readAsText(file);
+                });
+            }
+
+            async function processCSVData(data) {
+                showLoading(true);
+                try {
+                    rawData = data;
+                    console.log("Raw data parsed:", rawData.length, "records");
+
+                    if (rawData.length === 0) {
+                        alert("No data found in CSV file.");
+                        return;
+                    }
+
+                    cleanedData = cleanData(rawData);
+                    console.log("Cleaned data:", cleanedData.length, "records");
+
+                    if (cleanedData.length === 0) {
+                        alert("No valid data after cleaning. Check CSV format.");
+                        return;
+                    }
+
+                    initFilters();
+                    updateDashboard(cleanedData);
+                    updateTables(cleanedData);
+                    updateKeyFindings(cleanedData);
+
+                } catch (error) {
+                    console.error("Error processing data:", error);
+                    alert("Error processing CSV data: " + error.message);
+                } finally {
+                    showLoading(false);
+                }
+            }
+
+            function initFilters() {
+                try {
+                    const regions = [...new Set(cleanedData.map(d => d.Region).filter(Boolean))].sort();
+                    const regionSelect = document.getElementById("regionFilter");
+                    if (regionSelect) {
+                        regionSelect.innerHTML = '';
+
+                        regions.forEach(r => {
+                            let opt = document.createElement("option");
+                            opt.value = r;
+                            opt.text = r;
+                            opt.selected = true;
+                            regionSelect.appendChild(opt);
+                        });
+
+                        regionSelect.addEventListener("change", applyFilters);
+                    }
+
+                    const feeFilter = document.getElementById("feeFilter");
+                    const feeValue = document.getElementById("feeValue");
+
+                    if (feeFilter && feeValue) {
+                        feeFilter.value = 50000;
+                        feeValue.textContent = "£50,000";
+
+                        feeFilter.addEventListener("input", function () {
+                            feeValue.textContent = "£" + parseInt(this.value).toLocaleString();
+                            applyFilters();
+                        });
+                    }
+
+                    const toggleIELTS = document.getElementById("toggleIELTS");
+                    const ieltsModeSpan = document.getElementById("ieltsMode");
+
+                    if (toggleIELTS && ieltsModeSpan) {
+                        toggleIELTS.addEventListener("click", () => {
+                            ieltsMode = ieltsMode === "pie" ? "bar" : "pie";
+                            ieltsModeSpan.textContent = ieltsMode === "pie" ? "Pie Chart" : "Bar Chart";
+                            applyFilters();
+                        });
+                    }
+
+                    console.log("Filters initialized");
+                } catch (error) {
+                    console.error("Error initializing filters:", error);
+                }
+            }
+
+            function applyFilters() {
+                try {
+                    const selectedRegions = [];
+                    const regionSelect = document.getElementById("regionFilter");
+                    if (regionSelect) {
+                        selectedRegions.push(...[...regionSelect.selectedOptions].map(o => o.value));
+                    }
+
+                    const maxFee = parseInt(document.getElementById("feeFilter")?.value || 50000);
+
+                    const filtered = cleanedData.filter(d =>
+                        (selectedRegions.length === 0 || selectedRegions.includes(d.Region)) &&
+                        (d.UG_Fees <= maxFee || maxFee === 0 || d.UG_Fees === null)
+                    );
+
+                    console.log("Filtered data:", filtered.length, "records");
+                    updateDashboard(filtered);
+                    updateTables(filtered);
+                    updateKeyFindings(filtered);
+                } catch (error) {
+                    console.error("Error applying filters:", error);
+                }
+            }
+
+            function updateDashboard(data) {
+                try {
+                    console.log("Updating dashboard with", data.length, "records");
+                    renderKPIs(data);
+                    chart1(data);
+                    chart2(data);
+                    chart3(data);
+                    mapChart(data);
+                    chart6(data);
+                } catch (error) {
+                    console.error("Error updating dashboard:", error);
+                }
+            }
+
+            function renderKPIs(data) {
+                const kpis = document.getElementById("kpis");
+                if (data.length === 0) {
+                    kpis.innerHTML = '<div class="col-12"><h4 class="text-center">No data available. Please upload CSV file.</h4></div>';
+                    return;
+                }
+
+                try {
+                    const topRanked = data.reduce((min, item) =>
+                        (item.UK_rank || 999) < (min.UK_rank || 999) ? item : min, data[0]
+                    );
+
+                    kpis.innerHTML = `
+                                <div class="col-md-2">
+                                    <div class="card kpi-card">
+                                        <div class="card-body text-center">
+                                            <h6 class="card-title">Total Universities</h6>
+                                            <h3 class="card-text">${data.length}</h3>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <div class="card kpi-card">
+                                        <div class="card-body text-center">
+                                            <h6 class="card-title">Avg International %</h6>
+                                            <h3 class="card-text">${avg(data, "International_Students")}%</h3>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <div class="card kpi-card">
+                                        <div class="card-body text-center">
+                                            <h6 class="card-title">Avg Satisfaction</h6>
+                                            <h3 class="card-text">${avg(data, "Student_Satisfaction")}%</h3>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="card kpi-card">
+                                        <div class="card-body text-center">
+                                            <h6 class="card-title">Avg UG Fees</h6>
+                                            <h3 class="card-text">£${avg(data, "UG_Fees", true)}</h3>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="card kpi-card">
+                                        <div class="card-body text-center">
+                                            <h6 class="card-title">Top Ranked</h6>
+                                            <h3 class="card-text" title="${topRanked.University_name}">${topRanked.University_name?.substring(0, 15)}${topRanked.University_name?.length > 15 ? '...' : ''}</h3>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                } catch (error) {
+                    console.error("Error rendering KPIs:", error);
+                    kpis.innerHTML = '<div class="col-12"><h4 class="text-center">Error displaying data</h4></div>';
+                }
+            }
+
+            function avg(arr, field, formatNumber = false) {
+                try {
+                    let v = arr.map(d => d[field]).filter(x => x !== null && !isNaN(x));
+                    if (v.length === 0) return formatNumber ? "0" : "0.0";
+                    const average = v.reduce((a, b) => a + b, 0) / v.length;
+                    if (formatNumber) {
+                        return Math.round(average).toLocaleString();
+                    }
+                    return average.toFixed(1);
+                } catch (error) {
+                    return formatNumber ? "0" : "0.0";
+                }
+            }
+
+            function chart1(data) {
+                try {
+                    if (allChartInstances.chart1) {
+                        allChartInstances.chart1.dispose();
+                    }
+
+                    const root = am5.Root.new("chart1");
+                    root.setThemes([am5themes_Animated.new(root)]);
+                    allChartInstances.chart1 = root;
+
+                    if (data.length === 0) {
+                        root.container.children.push(am5.Label.new(root, {
+                            text: "No data available",
+                            fontSize: 20,
+                            x: am5.percent(50),
+                            y: am5.percent(50),
+                            centerX: am5.percent(50),
+                            centerY: am5.percent(50)
+                        }));
+                        return;
+                    }
+
+                    // Sort data by international students for better visualization
+                    const sortedData = [...data].sort((a, b) => (b.International_Students || 0) - (a.International_Students || 0)).slice(0, 15);
+
+                    const chart = root.container.children.push(
+                        am5xy.XYChart.new(root, {
+                            panX: true,
+                            panY: true,
+                            wheelX: "panX",
+                            wheelY: "zoomX",
+                            paddingLeft: 0,
+                            paddingRight: 20
+                        })
+                    );
+
+                    const xAxis = chart.xAxes.push(
+                        am5xy.CategoryAxis.new(root, {
+                            categoryField: "University_name",
+                            renderer: am5xy.AxisRendererX.new(root, {
+                                minGridDistance: 50,
+                                cellStartLocation: 0.1,
+                                cellEndLocation: 0.9
+                            })
+                        })
+                    );
+
+                    xAxis.get("renderer").labels.template.setAll({
+                        rotation: -45,
+                        centerY: am5.p100,
+                        centerX: am5.p100,
+                        paddingTop: 5,
+                        fontSize: 12
+                    });
+
+                    const yAxis = chart.yAxes.push(
+                        am5xy.ValueAxis.new(root, {
+                            renderer: am5xy.AxisRendererY.new(root, {}),
+                            min: 0,
+                            max: 100
+                        })
+                    );
+
+                    const yAxis2 = chart.yAxes.push(
+                        am5xy.ValueAxis.new(root, {
+                            renderer: am5xy.AxisRendererY.new(root, {
+                                opposite: true
+                            }),
+                            min: 0,
+                            max: 100
+                        })
+                    );
+
+                    const series1 = chart.series.push(
+                        am5xy.ColumnSeries.new(root, {
+                            name: "International Students",
+                            xAxis: xAxis,
+                            yAxis: yAxis,
+                            valueYField: "International_Students",
+                            categoryXField: "University_name",
+                            fill: am5.color(THEME.secondary),
+                            tooltip: am5.Tooltip.new(root, {
+                                labelText: "{name}: {valueY}%"
+                            })
+                        })
+                    );
+
+                    const series2 = chart.series.push(
+                        am5xy.LineSeries.new(root, {
+                            name: "Student Satisfaction",
+                            xAxis: xAxis,
+                            yAxis: yAxis2,
+                            valueYField: "Student_Satisfaction",
+                            categoryXField: "University_name",
+                            stroke: am5.color(THEME.accent),
+                            tooltip: am5.Tooltip.new(root, {
+                                labelText: "{name}: {valueY}%"
+                            })
+                        })
+                    );
+
+                    const chartData = sortedData.map(d => ({
+                        University_name: d.University_name,
+                        International_Students: d.International_Students || 0,
+                        Student_Satisfaction: d.Student_Satisfaction || 0
+                    }));
+
+                    xAxis.data.setAll(chartData);
+                    series1.data.setAll(chartData);
+                    series2.data.setAll(chartData);
+
+                    chart.set("cursor", am5xy.XYCursor.new(root, {}));
+
+                    const legend = chart.children.push(
+                        am5.Legend.new(root, {
+                            centerX: am5.percent(50),
+                            x: am5.percent(50),
+                            y: am5.percent(100),
+                            centerY: am5.percent(100),
+                            layout: root.horizontalLayout,
+                            dy: 10
+                        })
+                    );
+                    legend.data.setAll([series1, series2]);
+
+                    series1.appear();
+                    series2.appear();
+                    chart.appear(1000, 100);
+
+                    console.log("Chart 1 created with", sortedData.length, "items");
+                } catch (error) {
+                    console.error("Error creating chart1:", error);
+                }
+            }
+
+            function chart2(data) {
+                try {
+                    if (allChartInstances.chart2) {
+                        allChartInstances.chart2.dispose();
+                    }
+
+                    const root = am5.Root.new("chart2");
+                    root.setThemes([am5themes_Animated.new(root)]);
+                    allChartInstances.chart2 = root;
+
+                    if (data.length === 0) {
+                        root.container.children.push(am5.Label.new(root, {
+                            text: "No data available",
+                            fontSize: 20,
+                            x: am5.percent(50),
+                            y: am5.percent(50),
+                            centerX: am5.percent(50),
+                            centerY: am5.percent(50)
+                        }));
+                        return;
+                    }
+
+                    const chart = root.container.children.push(
+                        am5xy.XYChart.new(root, {
+                            panX: true,
+                            panY: true,
+                            wheelX: "panX",
+                            wheelY: "zoomX"
+                        })
+                    );
+
+                    const xAxis = chart.xAxes.push(
+                        am5xy.ValueAxis.new(root, {
+                            renderer: am5xy.AxisRendererX.new(root, {}),
+                            title: am5.Label.new(root, {
+                                text: "UK Rank",
+                                fontSize: 14
+                            })
+                        })
+                    );
+
+                    const yAxis = chart.yAxes.push(
+                        am5xy.ValueAxis.new(root, {
+                            renderer: am5xy.AxisRendererY.new(root, {}),
+                            title: am5.Label.new(root, {
+                                text: "CWUR Score",
+                                fontSize: 14
+                            })
+                        })
+                    );
+
+                    const series = chart.series.push(
+                        am5xy.LineSeries.new(root, {
+                            xAxis: xAxis,
+                            yAxis: yAxis,
+                            valueYField: "CWUR_score",
+                            valueXField: "UK_rank",
+                            stroke: am5.color(THEME.primary),
+                            tooltip: am5.Tooltip.new(root, {
+                                labelText: "{University_name}\nFounded: {Founded_year}\nUK Rank: {UK_rank}\nWorld Rank: {World_rank}\nCWUR Score: {CWUR_score}"
+                            })
+                        })
+                    );
+
+                    series.bullets.push(function () {
+                        return am5.Bullet.new(root, {
+                            sprite: am5.Circle.new(root, {
+                                radius: 6,
+                                fill: am5.color(THEME.accent),
+                                stroke: am5.color(THEME.primary),
+                                strokeWidth: 2
+                            })
+                        });
+                    });
+
+                    series.strokes.template.setAll({
+                        strokeWidth: 3
+                    });
+
+                    const chartData = data.filter(d => d.UK_rank && d.CWUR_score).map(d => ({
+                        UK_rank: d.UK_rank,
+                        CWUR_score: d.CWUR_score,
+                        University_name: d.University_name,
+                        Founded_year: d.Founded_year || "N/A",
+                        World_rank: d.World_rank || "N/A"
+                    }));
+
+                    series.data.setAll(chartData);
+                    chart.set("cursor", am5xy.XYCursor.new(root, {}));
+
+                    series.appear();
+                    chart.appear(1000, 100);
+                } catch (error) {
+                    console.error("Error creating chart2:", error);
+                }
+            }
+
+            function chart3(data) {
+                try {
+                    if (allChartInstances.chart3) {
+                        allChartInstances.chart3.dispose();
+                    }
+
+                    const root = am5.Root.new("chart3");
+                    root.setThemes([am5themes_Animated.new(root)]);
+                    allChartInstances.chart3 = root;
+
+                    if (data.length === 0) {
+                        root.container.children.push(am5.Label.new(root, {
+                            text: "No data available",
+                            fontSize: 20,
+                            x: am5.percent(50),
+                            y: am5.percent(50),
+                            centerX: am5.percent(50),
+                            centerY: am5.percent(50)
+                        }));
+                        return;
+                    }
+
+                    // Sort by UG fees for better visualization
+                    const sortedData = [...data].sort((a, b) => (b.UG_Fees || 0) - (a.UG_Fees || 0)).slice(0, 15);
+
+                    const chart = root.container.children.push(
+                        am5xy.XYChart.new(root, {
+                            panX: true,
+                            panY: true,
+                            wheelX: "panX",
+                            wheelY: "zoomX",
+                            paddingLeft: 0,
+                            paddingRight: 20
+                        })
+                    );
+
+                    const xAxis = chart.xAxes.push(
+                        am5xy.CategoryAxis.new(root, {
+                            categoryField: "University_name",
+                            renderer: am5xy.AxisRendererX.new(root, {
+                                minGridDistance: 50,
+                                cellStartLocation: 0.1,
+                                cellEndLocation: 0.9
+                            })
+                        })
+                    );
+
+                    xAxis.get("renderer").labels.template.setAll({
+                        rotation: -45,
+                        centerY: am5.p100,
+                        centerX: am5.p100,
+                        paddingTop: 5,
+                        fontSize: 12
+                    });
+
+                    const yAxis = chart.yAxes.push(
+                        am5xy.ValueAxis.new(root, {
+                            renderer: am5xy.AxisRendererY.new(root, {}),
+                            title: am5.Label.new(root, {
+                                text: "Fees (£)",
+                                fontSize: 14
+                            })
+                        })
+                    );
+
+                    const series1 = chart.series.push(
+                        am5xy.ColumnSeries.new(root, {
+                            name: "UG Fees",
+                            xAxis: xAxis,
+                            yAxis: yAxis,
+                            valueYField: "UG_Fees",
+                            categoryXField: "University_name",
+                            fill: am5.color(THEME.primary),
+                            tooltip: am5.Tooltip.new(root, {
+                                labelText: "UG Fees: £{valueY}"
+                            })
+                        })
+                    );
+
+                    const series2 = chart.series.push(
+                        am5xy.ColumnSeries.new(root, {
+                            name: "PG Fees",
+                            xAxis: xAxis,
+                            yAxis: yAxis,
+                            valueYField: "PG_Fees",
+                            categoryXField: "University_name",
+                            fill: am5.color(THEME.light),
+                            tooltip: am5.Tooltip.new(root, {
+                                labelText: "PG Fees: £{valueY}"
+                            })
+                        })
+                    );
+
+                    const chartData = sortedData.map(d => ({
+                        University_name: d.University_name,
+                        UG_Fees: d.UG_Fees || 0,
+                        PG_Fees: d.PG_Fees || 0
+                    }));
+
+                    xAxis.data.setAll(chartData);
+                    series1.data.setAll(chartData);
+                    series2.data.setAll(chartData);
+
+                    chart.set("cursor", am5xy.XYCursor.new(root, {}));
+
+                    const legend = chart.children.push(
+                        am5.Legend.new(root, {
+                            centerX: am5.percent(50),
+                            x: am5.percent(50),
+                            y: am5.percent(100),
+                            centerY: am5.percent(100),
+                            layout: root.horizontalLayout,
+                            dy: 10
+                        })
+                    );
+                    legend.data.setAll([series1, series2]);
+
+                    series1.appear();
+                    series2.appear();
+                    chart.appear(1000, 100);
+                } catch (error) {
+                    console.error("Error creating chart3:", error);
+                }
+            }
+
+            function mapChart(data) {
+                try {
+                    if (allChartInstances.mapChart) {
+                        allChartInstances.mapChart.dispose();
+                    }
+
+                    const root = am5.Root.new("mapChart");
+                    root.setThemes([am5themes_Animated.new(root)]);
+                    allChartInstances.mapChart = root;
+
+                    if (data.length === 0) {
+                        root.container.children.push(am5.Label.new(root, {
+                            text: "No data available",
+                            fontSize: 20,
+                            x: am5.percent(50),
+                            y: am5.percent(50),
+                            centerX: am5.percent(50),
+                            centerY: am5.percent(50)
+                        }));
+                        return;
+                    }
+
+                    // Create map chart
+                    const chart = root.container.children.push(
+                        am5map.MapChart.new(root, {
+                            panX: "rotateX",
+                            panY: "rotateY",
+                            projection: am5map.geoMercator(),
+                            paddingTop: 10,
+                            paddingBottom: 10,
+                            paddingLeft: 10,
+                            paddingRight: 10,
+                            background: am5.Rectangle.new(root, {
+                                fill: am5.color(0xffffff)
+                            })
+                        })
+                    );
+
+                    // Add zoom control
+                    chart.set("zoomControl", am5map.ZoomControl.new(root, {}));
+
+                    // Create polygon series for UK map
+                    const polygonSeries = chart.series.push(
+                        am5map.MapPolygonSeries.new(root, {
+                            geoJSON: am5geodata_ukLow
+                        })
+                    );
+
+                    // Set up polygon appearance
+                    polygonSeries.mapPolygons.template.setAll({
+                        tooltipText: "{name}",
+                        interactive: true,
+                        fill: am5.color(0xA3C1E5),
+                        stroke: am5.color(0x1F3A5F),
+                        strokeWidth: 0.5
+                    });
+
+                    polygonSeries.mapPolygons.template.states.create("hover", {
+                        fill: am5.color(0x4F81BD)
+                    });
+
+                    polygonSeries.mapPolygons.template.events.on("pointerover", function (ev) {
+                        const regionName = ev.target.dataItem.dataContext.name;
+                        console.log("Hovered region:", regionName);
+
+                        // Find universities in this region
+                        const universitiesInRegion = data.filter(d => {
+                            if (!d.Region) return false;
+
+                            // Simple matching logic
+                            const region = d.Region.toLowerCase();
+                            const mapRegion = regionName.toLowerCase();
+
+                            return region.includes(mapRegion) ||
+                                mapRegion.includes(region) ||
+                                (mapRegion.includes("london") && region.includes("london")) ||
+                                (mapRegion.includes("scotland") && region.includes("scotland")) ||
+                                (mapRegion.includes("wales") && region.includes("wales")) ||
+                                (mapRegion.includes("yorkshire") && region.includes("yorkshire")) ||
+                                (mapRegion.includes("midlands") && region.includes("midlands"));
+                        });
+
+                        if (universitiesInRegion.length > 0) {
+                            const uniList = universitiesInRegion.slice(0, 10).map((uni, index) =>
+                                `${index + 1}. ${uni.University_name}${uni.UK_rank ? ` (#${uni.UK_rank})` : ''}`
+                            ).join('\n');
+
+                            const extraText = universitiesInRegion.length > 10 ?
+                                `\n... and ${universitiesInRegion.length - 10} more universities` : '';
+
+                            ev.target.set("tooltipText",
+                                `[bold]${regionName}[/]\n` +
+                                `Universities: ${universitiesInRegion.length}\n\n` +
+                                `${uniList}${extraText}`
+                            );
+                        } else {
+                            ev.target.set("tooltipText",
+                                `[bold]${regionName}[/]\n` +
+                                `No university data available`
+                            );
+                        }
+                    });
+
+                    // Create point series for university markers
+                    const pointSeries = chart.series.push(
+                        am5map.MapPointSeries.new(root, {})
+                    );
+
+                    pointSeries.bullets.push(function (root, series, dataItem) {
+                        const circle = am5.Circle.new(root, {
+                            radius: 7,
+                            fill: am5.color(0xF28C28),
+                            stroke: am5.color(0x1F3A5F),
+                            strokeWidth: 2,
+                            cursorOverStyle: "pointer",
+                            tooltipText:
+                                `[bold]{University_name}[/]\n` +
+                                `Region: {Region}\n` +
+                                `Rank: {UK_rank}\n` +
+                                `UG Fees: {UG_Fees}\n` +
+                                `International: {International_Students}%\n` +
+                                `Satisfaction: {Student_Satisfaction}%`
+                        });
+
+                        return am5.Bullet.new(root, {
+                            sprite: circle
+                        });
+                    });
+
+                    // Prepare point data
+                    const pointData = data
+                        .filter(d => d.Latitude && d.Longitude && !isNaN(d.Latitude) && !isNaN(d.Longitude))
+                        .map(d => ({
+                            latitude: d.Latitude,
+                            longitude: d.Longitude,
+                            University_name: d.University_name || 'Unknown',
+                            Region: d.Region || 'Unknown',
+                            UK_rank: d.UK_rank || 'N/A',
+                            UG_Fees: d.UG_Fees ? '£' + d.UG_Fees.toLocaleString() : 'N/A',
+                            International_Students: d.International_Students ? d.International_Students.toFixed(1) + '%' : 'N/A',
+                            Student_Satisfaction: d.Student_Satisfaction ? d.Student_Satisfaction.toFixed(1) + '%' : 'N/A'
+                        }));
+
+                    pointSeries.data.setAll(pointData);
+
+                    // Create legend
+                    const legend = chart.children.push(
+                        am5.Legend.new(root, {
+                            centerX: am5.percent(50),
+                            x: am5.percent(50),
+                            y: am5.percent(100),
+                            centerY: am5.percent(100),
+                            layout: root.horizontalLayout,
+                            dy: 15,
+                            paddingTop: 10,
+                            paddingBottom: 10,
+                            background: am5.RoundedRectangle.new(root, {
+                                fill: am5.color(0xffffff),
+                                fillOpacity: 0.8,
+                                strokeWidth: 1,
+                                stroke: am5.color(0xcccccc)
+                            })
+                        })
+                    );
+
+                    legend.data.setAll([
+                        {
+                            name: "University Locations",
+                            fill: am5.color(0xF28C28)
+                        },
+                        {
+                            name: "UK Regions",
+                            fill: am5.color(0xA3C1E5)
+                        }
+                    ]);
+
+                    // Add title
+                    chart.children.push(am5.Label.new(root, {
+                        
+                        fontSize: 14,
+                        fill: am5.color(0x1F3A5F),
+                        x: am5.percent(50),
+                        centerX: am5.percent(50),
+                        y: 15
+                    }));
+
+                    chart.appear(1000, 100);
+
+                    console.log("Map chart created with", pointData.length, "university markers");
+
+                } catch (error) {
+                    console.error("Error creating map chart:", error);
+                    // Create a simple fallback display
+                    const root = am5.Root.new("mapChart");
+                    root.container.children.push(am5.Label.new(root, {
+                        text: "Error loading map. Please check console for details.",
+                        fontSize: 16,
+                        fill: am5.color(0xff0000),
+                        x: am5.percent(50),
+                        y: am5.percent(50),
+                        centerX: am5.percent(50),
+                        centerY: am5.percent(50)
+                    }));
+                    allChartInstances.mapChart = root;
+                }
+            }
+
+
+
+
+
+
+
+
+
+
+            function chart6(data) {
+                try {
+                    if (allChartInstances.chart6) {
+                        allChartInstances.chart6.dispose();
+                    }
+
+                    const root = am5.Root.new("chart6");
+                    root.setThemes([am5themes_Animated.new(root)]);
+                    allChartInstances.chart6 = root;
+
+                    if (data.length === 0) {
+                        root.container.children.push(am5.Label.new(root, {
+                            text: "No data available",
+                            fontSize: 20,
+                            x: am5.percent(50),
+                            y: am5.percent(50),
+                            centerX: am5.percent(50),
+                            centerY: am5.percent(50)
+                        }));
+                        return;
+                    }
+
+                    // Filter data with IELTS scores
+                    const ieltsData = data.filter(d => d.Minimum_IELTS_score && d.Minimum_IELTS_score > 0);
+
+                    if (ieltsMode === "pie") {
+                        // Create IELTS score ranges
+                        const scoreRanges = [
+                            { range: "6.0-6.5", min: 6.0, max: 6.5, count: 0 },
+                            { range: "6.5-7.0", min: 6.5, max: 7.0, count: 0 },
+                            { range: "7.0-7.5", min: 7.0, max: 7.5, count: 0 },
+                            { range: "7.5-8.0", min: 7.5, max: 8.0, count: 0 },
+                            { range: "8.0+", min: 8.0, max: 10.0, count: 0 }
+                        ];
+
+                        // Count universities in each range
+                        ieltsData.forEach(d => {
+                            const score = d.Minimum_IELTS_score;
+                            for (const range of scoreRanges) {
+                                if (score >= range.min && score < range.max) {
+                                    range.count++;
+                                    break;
+                                }
+                            }
+                        });
+
+                        const chart = root.container.children.push(
+                            am5percent.PieChart.new(root, {
+                                innerRadius: am5.percent(40),
+                                layout: root.horizontalLayout
+                            })
+                        );
+
+                        const series = chart.series.push(
+                            am5percent.PieSeries.new(root, {
+                                valueField: "count",
+                                categoryField: "range",
+                                alignLabels: false
+                            })
+                        );
+
+                        series.labels.template.setAll({
+                            textType: "circular",
+                            radius: 10,
+                            fontSize: 12
+                        });
+
+                        series.slices.template.setAll({
+                            stroke: am5.color(0xffffff),
+                            strokeWidth: 2
+                        });
+
+                        series.data.setAll(scoreRanges.filter(r => r.count > 0));
+
+                        series.appear(1000, 100);
+                    } else {
+                        // Bar chart view
+                        const chart = root.container.children.push(
+                            am5xy.XYChart.new(root, {
+                                panX: false,
+                                panY: false,
+                                wheelX: "panX",
+                                wheelY: "zoomX",
+                                paddingLeft: 0,
+                                paddingRight: 20
+                            })
+                        );
+
+                        const xAxis = chart.xAxes.push(
+                            am5xy.CategoryAxis.new(root, {
+                                categoryField: "range",
+                                renderer: am5xy.AxisRendererX.new(root, {
+                                    minGridDistance: 30,
+                                    cellStartLocation: 0.1,
+                                    cellEndLocation: 0.9
+                                })
+                            })
+                        );
+
+                        xAxis.get("renderer").labels.template.setAll({
+                            rotation: 0,
+                            fontSize: 12
+                        });
+
+                        const yAxis = chart.yAxes.push(
+                            am5xy.ValueAxis.new(root, {
+                                renderer: am5xy.AxisRendererY.new(root, {}),
+                                title: am5.Label.new(root, {
+                                    text: "Number of Universities",
+                                    fontSize: 14
+                                })
+                            })
+                        );
+
+                        const series = chart.series.push(
+                            am5xy.ColumnSeries.new(root, {
+                                xAxis: xAxis,
+                                yAxis: yAxis,
+                                valueYField: "count",
+                                categoryXField: "range",
+                                fill: am5.color(THEME.secondary),
+                                tooltip: am5.Tooltip.new(root, {
+                                    labelText: "{range}: {count} universities"
+                                })
+                            })
+                        );
+
+                        // Create IELTS score ranges
+                        const scoreRanges = [
+                            { range: "6.0-6.5", min: 6.0, max: 6.5, count: 0 },
+                            { range: "6.5-7.0", min: 6.5, max: 7.0, count: 0 },
+                            { range: "7.0-7.5", min: 7.0, max: 7.5, count: 0 },
+                            { range: "7.5-8.0", min: 7.5, max: 8.0, count: 0 },
+                            { range: "8.0+", min: 8.0, max: 10.0, count: 0 }
+                        ];
+
+                        // Count universities in each range
+                        ieltsData.forEach(d => {
+                            const score = d.Minimum_IELTS_score;
+                            for (const range of scoreRanges) {
+                                if (score >= range.min && score < range.max) {
+                                    range.count++;
+                                    break;
+                                }
+                            }
+                        });
+
+                        xAxis.data.setAll(scoreRanges);
+                        series.data.setAll(scoreRanges);
+
+                        series.appear();
+                        chart.appear(1000, 100);
+                    }
+                } catch (error) {
+                    console.error("Error creating IELTS chart:", error);
+                }
+            }
+
+            function updateTables(data) {
+                try {
+                    // Table 1: University Details
+                    const table1Body = document.getElementById("table1-body");
+                    if (table1Body) {
+                        table1Body.innerHTML = "";
+
+                        const limitedData = data.slice(0, 20); // Limit to 20 rows for performance
+
+                        limitedData.forEach(d => {
+                            const row = document.createElement("tr");
+                            row.innerHTML = `
+                                        <td>${d.University_name || 'N/A'}</td>
+                                        <td>${d.Region || 'N/A'}</td>
+                                        <td>${d.UK_rank || 'N/A'}</td>
+                                        <td>${d.UG_Fees ? '£' + d.UG_Fees.toLocaleString() : 'N/A'}</td>
+                                        <td>${d.PG_Fees ? '£' + d.PG_Fees.toLocaleString() : 'N/A'}</td>
+                                        <td>${d.Student_Satisfaction ? d.Student_Satisfaction.toFixed(1) + '%' : 'N/A'}</td>
+                                        <td>${d.International_Students ? d.International_Students.toFixed(1) + '%' : 'N/A'}</td>
+                                    `;
+                            table1Body.appendChild(row);
+                        });
+                    }
+
+                    // Table 2: University Statistics
+                    const table2Body = document.getElementById("table2-body");
+                    if (table2Body) {
+                        table2Body.innerHTML = "";
+
+                        const limitedData = data.slice(0, 20); // Limit to 20 rows for performance
+
+                        limitedData.forEach(d => {
+                            const row = document.createElement("tr");
+                            row.innerHTML = `
+                                        <td>${d.University_name || 'N/A'}</td>
+                                        <td>${d.Student_Enrollment ? d.Student_Enrollment.toLocaleString() : 'N/A'}</td>
+                                        <td>${d.Academic_Staff ? d.Academic_Staff.toLocaleString() : 'N/A'}</td>
+                                        <td>${d.Estimated_Living_Cost ? '£' + d.Estimated_Living_Cost.toLocaleString() : 'N/A'}</td>
+                                    `;
+                            table2Body.appendChild(row);
+                        });
+                    }
+                } catch (error) {
+                    console.error("Error updating tables:", error);
+                }
+            }
+
+            function updateKeyFindings(data) {
+                try {
+                    const keyFindingsBody = document.getElementById("key-findings-body");
+                    if (!keyFindingsBody) return;
+
+                    if (data.length === 0) {
+                        keyFindingsBody.innerHTML = `
+                                    <tr>
+                                        <td colspan="2" class="text-center">No data available. Upload CSV file to see key findings.</td>
+                                    </tr>
+                                `;
+                        return;
+                    }
+
+                    // Calculate key findings
+                    const findings = [
+                        {
+                            question: "Which region has the highest average international student percentage?",
+                            finding: calculateRegionWithHighestInternational(data)
+                        },
+                        {
+                            question: "What is the correlation between UG fees and student satisfaction?",
+                            finding: calculateFeeSatisfactionCorrelation(data)
+                        },
+                        {
+                            question: "Which universities offer the best value (low fees, high satisfaction)?",
+                            finding: findBestValueUniversities(data)
+                        },
+                        {
+                            question: "How does ranking correlate with international student percentage?",
+                            finding: calculateRankingInternationalCorrelation(data)
+                        },
+                        {
+                            question: "What is the average IELTS requirement for UK universities?",
+                            finding: calculateAverageIELTS(data)
+                        }
+                    ];
+
+                    keyFindingsBody.innerHTML = "";
+
+                    findings.forEach(finding => {
+                        const row = document.createElement("tr");
+                        row.innerHTML = `
+                                    <td><strong>${finding.question}</strong></td>
+                                    <td>${finding.finding}</td>
+                                `;
+                        keyFindingsBody.appendChild(row);
+                    });
+                } catch (error) {
+                    console.error("Error updating key findings:", error);
+                }
+            }
+
+            function calculateRegionWithHighestInternational(data) {
+                const regions = {};
+                data.forEach(d => {
+                    if (d.Region && d.International_Students) {
+                        if (!regions[d.Region]) {
+                            regions[d.Region] = { total: 0, count: 0 };
+                        }
+                        regions[d.Region].total += d.International_Students;
+                        regions[d.Region].count++;
+                    }
+                });
+
+                let highestRegion = "N/A";
+                let highestAvg = 0;
+
+                Object.keys(regions).forEach(region => {
+                    const avg = regions[region].total / regions[region].count;
+                    if (avg > highestAvg) {
+                        highestAvg = avg;
+                        highestRegion = region;
+                    }
+                });
+
+                return `${highestRegion} with ${highestAvg.toFixed(1)}% international students on average`;
+            }
+
+            function calculateFeeSatisfactionCorrelation(data) {
+                const validData = data.filter(d => d.UG_Fees && d.Student_Satisfaction);
+                if (validData.length < 2) return "Insufficient data to determine correlation";
+
+                // Simple correlation calculation
+                const n = validData.length;
+                let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0, sumY2 = 0;
+
+                validData.forEach(d => {
+                    sumX += d.UG_Fees;
+                    sumY += d.Student_Satisfaction;
+                    sumXY += d.UG_Fees * d.Student_Satisfaction;
+                    sumX2 += d.UG_Fees * d.UG_Fees;
+                    sumY2 += d.Student_Satisfaction * d.Student_Satisfaction;
+                });
+
+                const numerator = n * sumXY - sumX * sumY;
+                const denominator = Math.sqrt((n * sumX2 - sumX * sumX) * (n * sumY2 - sumY * sumY));
+
+                if (denominator === 0) return "No correlation found";
+
+                const correlation = numerator / denominator;
+
+                if (correlation > 0.3) return "Positive correlation: Higher fees tend to have higher satisfaction";
+                if (correlation < -0.3) return "Negative correlation: Lower fees tend to have higher satisfaction";
+                return "Weak correlation: Fees and satisfaction are not strongly related";
+            }
+
+            function findBestValueUniversities(data) {
+                const validData = data.filter(d => d.UG_Fees && d.Student_Satisfaction && d.UG_Fees < 15000);
+
+                if (validData.length === 0) return "No universities found with both fee and satisfaction data";
+
+                // Calculate value score (satisfaction / fee, normalized)
+                const maxFee = Math.max(...validData.map(d => d.UG_Fees));
+                const maxSat = Math.max(...validData.map(d => d.Student_Satisfaction));
+
+                validData.forEach(d => {
+                    d.valueScore = (d.Student_Satisfaction / maxSat) / (d.UG_Fees / maxFee);
+                });
+
+                const sorted = [...validData].sort((a, b) => b.valueScore - a.valueScore).slice(0, 3);
+
+                return sorted.map(d => d.University_name).join(", ");
+            }
+
+            function calculateRankingInternationalCorrelation(data) {
+                const validData = data.filter(d => d.UK_rank && d.International_Students);
+                if (validData.length < 2) return "Insufficient data to determine correlation";
+
+                // Group by rank tiers
+                const tiers = {
+                    "Top 10": { total: 0, count: 0 },
+                    "11-50": { total: 0, count: 0 },
+                    "51-100": { total: 0, count: 0 },
+                    "100+": { total: 0, count: 0 }
+                };
+
+                validData.forEach(d => {
+                    if (d.UK_rank <= 10) {
+                        tiers["Top 10"].total += d.International_Students;
+                        tiers["Top 10"].count++;
+                    } else if (d.UK_rank <= 50) {
+                        tiers["11-50"].total += d.International_Students;
+                        tiers["11-50"].count++;
+                    } else if (d.UK_rank <= 100) {
+                        tiers["51-100"].total += d.International_Students;
+                        tiers["51-100"].count++;
+                    } else {
+                        tiers["100+"].total += d.International_Students;
+                        tiers["100+"].count++;
+                    }
+                });
+
+                let result = "";
+                Object.keys(tiers).forEach(tier => {
+                    if (tiers[tier].count > 0) {
+                        const avg = tiers[tier].total / tiers[tier].count;
+                        result += `${tier}: ${avg.toFixed(1)}%, `;
+                    }
+                });
+
+                return result.slice(0, -2);
+            }
+
+            function calculateAverageIELTS(data) {
+                const validData = data.filter(d => d.Minimum_IELTS_score && d.Minimum_IELTS_score > 0);
+                if (validData.length === 0) return "No IELTS data available";
+
+                const avgScore = validData.reduce((sum, d) => sum + d.Minimum_IELTS_score, 0) / validData.length;
+
+                // Count by score ranges
+                const ranges = {
+                    "6.0-6.5": 0,
+                    "6.5-7.0": 0,
+                    "7.0-7.5": 0,
+                    "7.5-8.0": 0,
+                    "8.0+": 0
+                };
+
+                validData.forEach(d => {
+                    const score = d.Minimum_IELTS_score;
+                    if (score >= 6.0 && score < 6.5) ranges["6.0-6.5"]++;
+                    else if (score >= 6.5 && score < 7.0) ranges["6.5-7.0"]++;
+                    else if (score >= 7.0 && score < 7.5) ranges["7.0-7.5"]++;
+                    else if (score >= 7.5 && score < 8.0) ranges["7.5-8.0"]++;
+                    else if (score >= 8.0) ranges["8.0+"]++;
+                });
+
+                return `Average IELTS: ${avgScore.toFixed(1)}. Most common: ${Object.entries(ranges).sort((a, b) => b[1] - a[1])[0][0]}`;
+            }
+
+            function initializeFileUpload() {
+                const fileInput = document.getElementById('csvFile');
+                const fileLabel = document.getElementById('fileLabel');
+
+                if (fileInput) {
+                    fileInput.addEventListener('change', async function (e) {
+                        const file = e.target.files[0];
+                        if (!file) return;
+
+                        if (!file.name.toLowerCase().endsWith('.csv')) {
+                            alert('Please upload a CSV file.');
+                            return;
+                        }
+
+                        try {
+                            console.log("Loading file:", file.name);
+                            const data = await loadCSVFromFile(file);
+
+                            if (data.length === 0) {
+                                alert('No data found in CSV file.');
+                                return;
+                            }
+
+                            await processCSVData(data);
+
+                            // Update file input label
+                            fileLabel.textContent = `Uploaded: ${file.name} (${data.length} universities)`;
+                            console.log("File processed successfully");
+
+                        } catch (error) {
+                            console.error('Error processing CSV:', error);
+                            alert('Error processing CSV file: ' + error.message);
+                        }
+                    });
+                }
+            }
+
+            function initializeApp() {
+                initializeFileUpload();
+
+                // Show welcome message
+                const kpis = document.getElementById("kpis");
+                kpis.innerHTML = `
+                                <div class="col-12">
+                                    <div class="card kpi-card" style="background: linear-gradient(135deg, #4CAF50, #45a049);">
+                                        <div class="card-body text-center">
+                                            <h6 class="card-title">Welcome to UK Universities Dashboard</h6>
+                                            <h3 class="card-text">📊</h3>
+                                            <p>Upload "uk_universities.csv" file to analyze university data</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+
+                console.log("Application initialized");
+            }
+
+            // Start the application
+            initializeApp();
+        });
+    </script>
+</body>
+</html>
