@@ -3,3 +3,4 @@ This interactive dashboard designed to visualize and analyze key performance and
 
 <img width="1890" height="905" alt="Screenshot 2026-06-18 060219" src="https://github.com/user-attachments/assets/0487c6a1-de7b-4ad1-a93f-5873784dd2f3" />
 
+<img width="1882" height="802" alt="Screenshot 2026-06-18 060236" src="https://github.com/user-attachments/assets/923f9078-8aef-408a-83be-472414bb25e1" />
